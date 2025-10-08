@@ -77,8 +77,3 @@ Welcome! This is a modern Flutter app with Appwrite Cloud authentication. Follow
 
 ---
 
-## 🎉 Enjoy your Coffee Cart app!
-
-Made with ❤️ by 3boudi & GitHub Copilot
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
