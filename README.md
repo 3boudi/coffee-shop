@@ -8,7 +8,7 @@ Welcome! This is a modern Flutter app with Appwrite Cloud authentication. Follow
 
 ## 1️⃣ Prerequisites
 - Flutter SDK (3.9+)
-- Appwrite Cloud account ([Sign up free](https://cloud.appwrite.io))
+- Appwrite Cloud account 
 - Android device (real or emulator)
 
 ---
