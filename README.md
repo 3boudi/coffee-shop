@@ -36,7 +36,7 @@ Welcome! This is a modern Flutter app with Appwrite Cloud authentication. Follow
 - Set these values:
 	```dart
 	const kAppwriteEndpoint = 'https://fra.cloud.appwrite.io/v1';
-	const kAppwriteProjectId = '68bf228300007baa47f9';
+	const kAppwriteProjectId = 'project id here';
 	```
 
 ---
