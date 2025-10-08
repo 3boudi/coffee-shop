@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:appwrite/appwrite.dart';
 import 'package:appwrite/models.dart' as models;
+import 'package:shared_preferences/shared_preferences.dart';
 import 'pages/home_page.dart';
 import 'pages/login_page.dart';
+import 'pages/splash_screen.dart';
+import 'pages/loading_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -13,7 +16,7 @@ void main() async {
 
   final client = Client()
       .setEndpoint(kAppwriteEndpoint)
-      .setProject(kAppwriteProjectId); // رقم المشروع
+      .setProject(kAppwriteProjectId);
 
   final account = Account(client);
 
@@ -29,102 +32,144 @@ class MyApp extends StatefulWidget {
   State<MyApp> createState() => _MyAppState();
 }
 
+enum AppState { splash, loading, authenticated, unauthenticated }
+
 class _MyAppState extends State<MyApp> {
-  models.User? loggedInUser;
-  String? lastErrorMessage;
-  final TextEditingController emailController = TextEditingController();
-  final TextEditingController passwordController = TextEditingController();
-  final TextEditingController nameController = TextEditingController();
+  AppState _currentState = AppState.splash;
+  models.User? _loggedInUser;
+  String? _lastErrorMessage;
+  String _loadingMessage = 'Loading...';
 
   @override
   void initState() {
     super.initState();
-    // Try to get the current user on startup so the app shows the Home page
-    // if a session already exists. This also surfaces connection errors early.
-    _checkCurrentUser();
+    _initializeApp();
+  }
+
+  Future<void> _initializeApp() async {
+    // Show splash screen for at least 2 seconds
+    await Future.delayed(const Duration(seconds: 2));
+
+    // Check for existing session
+    await _checkCurrentUser();
   }
 
   Future<void> _checkCurrentUser() async {
+    setState(() {
+      _currentState = AppState.loading;
+      _loadingMessage = 'Checking session...';
+    });
+
     try {
-      final user = await widget.account.get();
-      setState(() => loggedInUser = user);
+      // Check if user has a saved session
+      final prefs = await SharedPreferences.getInstance();
+      final hasSession = prefs.getBool('has_session') ?? false;
+
+      if (hasSession) {
+        final user = await widget.account.get();
+        setState(() {
+          _loggedInUser = user;
+          _currentState = AppState.authenticated;
+          _lastErrorMessage = null;
+        });
+      } else {
+        setState(() {
+          _currentState = AppState.unauthenticated;
+          _lastErrorMessage = null;
+        });
+      }
     } on AppwriteException catch (e) {
-      // If the call is unauthorized or the user is a guest missing scopes,
-      // treat this as "not logged in" (normal on first app start) and don't
-      // surface an alarming error to the user. Only surface other error types.
+      // Clear invalid session
+      await _clearSession();
+
       final isAuthError =
           e.code == 401 ||
           (e.message != null &&
               e.message!.toLowerCase().contains('missing scope'));
-      if (isAuthError) {
-        debugPrint('Startup: no session (user unauthenticated)');
-        setState(() {
-          lastErrorMessage = null;
-          loggedInUser = null;
-        });
-        return;
-      }
 
-      final msg = 'Startup: ${e.message} (code: ${e.code})';
-      // Keep full details in logs but show a short friendlier message.
-      debugPrint('Startup: could not fetch current user: $msg');
+      if (isAuthError) {
+        debugPrint('No valid session found');
+        setState(() {
+          _currentState = AppState.unauthenticated;
+          _lastErrorMessage = null;
+        });
+      } else {
+        debugPrint('Session check error: ${e.message} (code: ${e.code})');
+        setState(() {
+          _currentState = AppState.unauthenticated;
+          _lastErrorMessage = 'Connection error. Please try again.';
+        });
+      }
+    } catch (e) {
+      debugPrint('Unexpected error during session check: $e');
       setState(() {
-        lastErrorMessage = 'Unable to contact authentication server.';
-      });
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        _showError('Connection problem — please check your network.');
-      });
-    } catch (e, st) {
-      debugPrint('Startup: unexpected error fetching user: $e\n$st');
-      setState(() {
-        lastErrorMessage = 'Unexpected error during startup.';
-      });
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        _showError('An unexpected error occurred.');
+        _currentState = AppState.unauthenticated;
+        _lastErrorMessage = 'An unexpected error occurred.';
       });
     }
   }
 
-  // تسجيل الدخول
+  Future<void> _saveSession() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('has_session', true);
+  }
+
+  Future<void> _clearSession() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('has_session');
+  }
+
   Future<void> login(String email, String password) async {
+    setState(() {
+      _currentState = AppState.loading;
+      _loadingMessage = 'Signing in...';
+    });
+
     try {
       await widget.account.createEmailPasswordSession(
         email: email,
         password: password,
       );
+
       final user = await widget.account.get();
+      await _saveSession();
+
       setState(() {
-        loggedInUser = user;
-        // Clear input fields and any previous error after successful login
-        emailController.clear();
-        passwordController.clear();
-        nameController.clear();
-        lastErrorMessage = null;
+        _loggedInUser = user;
+        _currentState = AppState.authenticated;
+        _lastErrorMessage = null;
       });
     } on AppwriteException catch (e) {
-      final msg = 'Login error: ${e.message} (code: ${e.code})';
-      // Full details in logs for debugging
-      debugPrint(msg);
-      // Provide a short, user-friendly message on screen
-      String friendly;
+      debugPrint('Login error: ${e.message} (code: ${e.code})');
+
+      String friendlyMessage;
       if (e.code == 401) {
-        friendly = 'Login failed — check your credentials.';
+        friendlyMessage = 'Invalid email or password';
       } else if (e.code == 404) {
-        friendly = 'Login failed — server not found.';
-      } else if (e.code == 409) {
-        friendly = 'Login failed — user may already exist.';
+        friendlyMessage = 'Server not found. Please check your connection.';
       } else {
-        friendly = 'Login failed — please try again.';
+        friendlyMessage = 'Login failed. Please try again.';
       }
+
       setState(() {
-        lastErrorMessage = friendly;
+        _currentState = AppState.unauthenticated;
+        _lastErrorMessage = friendlyMessage;
       });
-      _showError(friendly);
+    } catch (e) {
+      debugPrint('Unexpected login error: $e');
+      setState(() {
+        _currentState = AppState.unauthenticated;
+        _lastErrorMessage = 'An unexpected error occurred.';
+      });
     }
   }
 
-  // التسجيل
   Future<void> register(String email, String password, String name) async {
+    setState(() {
+      _currentState = AppState.loading;
+      _loadingMessage = 'Creating account...';
+    });
+
     try {
       await widget.account.create(
         userId: ID.unique(),
@@ -132,64 +177,100 @@ class _MyAppState extends State<MyApp> {
         password: password,
         name: name,
       );
+
+      // Auto login after registration
       await login(email, password);
     } on AppwriteException catch (e) {
-      final msg = 'Register error: ${e.message} (code: ${e.code})';
-      debugPrint(msg);
-      String friendly;
+      debugPrint('Register error: ${e.message} (code: ${e.code})');
+
+      String friendlyMessage;
       if (e.code == 409) {
-        friendly = 'Registration failed — user already exists.';
+        friendlyMessage = 'An account with this email already exists';
       } else if (e.code == 400) {
-        friendly = 'Registration failed — invalid input.';
+        friendlyMessage = 'Invalid registration details';
       } else {
-        friendly = 'Registration failed — please try again.';
+        friendlyMessage = 'Registration failed. Please try again.';
       }
+
       setState(() {
-        lastErrorMessage = friendly;
+        _currentState = AppState.unauthenticated;
+        _lastErrorMessage = friendlyMessage;
       });
-      _showError(friendly);
+    } catch (e) {
+      debugPrint('Unexpected registration error: $e');
+      setState(() {
+        _currentState = AppState.unauthenticated;
+        _lastErrorMessage = 'An unexpected error occurred.';
+      });
     }
   }
 
-  // تسجيل الخروج
   Future<void> logout() async {
+    setState(() {
+      _currentState = AppState.loading;
+      _loadingMessage = 'Signing out...';
+    });
+
     try {
       await widget.account.deleteSession(sessionId: 'current');
+      await _clearSession();
+
       setState(() {
-        loggedInUser = null;
-        // Clear any sensitive data and error state on logout
-        emailController.clear();
-        passwordController.clear();
-        nameController.clear();
-        lastErrorMessage = null;
+        _loggedInUser = null;
+        _currentState = AppState.unauthenticated;
+        _lastErrorMessage = null;
       });
     } on AppwriteException catch (e) {
-      final msg = 'Logout error: ${e.message} (code: ${e.code})';
-      debugPrint(msg);
+      debugPrint('Logout error: ${e.message} (code: ${e.code})');
+      // Even if logout fails, clear local session
+      await _clearSession();
       setState(() {
-        lastErrorMessage = 'Logout failed.';
+        _loggedInUser = null;
+        _currentState = AppState.unauthenticated;
+        _lastErrorMessage = null;
       });
-      _showError('Logout failed.');
+    } catch (e) {
+      debugPrint('Unexpected logout error: $e');
+      // Even if logout fails, clear local session
+      await _clearSession();
+      setState(() {
+        _loggedInUser = null;
+        _currentState = AppState.unauthenticated;
+        _lastErrorMessage = null;
+      });
     }
-  }
-
-  void _showError(String message) {
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      home: loggedInUser != null
-          ? HomePage(user: loggedInUser!, onLogout: logout)
-          : LoginPage(
-              onLogin: (email, password) => login(email, password),
-              onRegister: (email, password, name) =>
-                  register(email, password, name),
-              errorMessage: lastErrorMessage,
-            ),
+      title: 'Coffee Cart',
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(
+        primarySwatch: Colors.brown,
+        visualDensity: VisualDensity.adaptivePlatformDensity,
+      ),
+      home: _buildCurrentScreen(),
     );
+  }
+
+  Widget _buildCurrentScreen() {
+    switch (_currentState) {
+      case AppState.splash:
+        return const SplashScreen();
+
+      case AppState.loading:
+        return LoadingScreen(message: _loadingMessage);
+
+      case AppState.authenticated:
+        return HomePage(user: _loggedInUser!, onLogout: logout);
+
+      case AppState.unauthenticated:
+        return LoginPage(
+          onLogin: login,
+          onRegister: register,
+          errorMessage: _lastErrorMessage,
+        );
+    }
   }
 }
