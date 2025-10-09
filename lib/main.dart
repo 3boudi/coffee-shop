@@ -12,7 +12,7 @@ void main() async {
 
   // Use Appwrite Cloud endpoint and the project id you provided
   const String kAppwriteEndpoint = 'https://fra.cloud.appwrite.io/v1';
-  const String kAppwriteProjectId = '';
+  const String kAppwriteProjectId = '1233';
 
   final client = Client()
       .setEndpoint(kAppwriteEndpoint)
