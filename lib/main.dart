@@ -11,7 +11,7 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   const String kAppwriteEndpoint = 'https://fra.cloud.appwrite.io/v1';
-  const String kAppwriteProjectId = '68bf228300007baa47f9';
+  const String kAppwriteProjectId = 'wiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiw';
 
   final client = Client()
       .setEndpoint(kAppwriteEndpoint)
