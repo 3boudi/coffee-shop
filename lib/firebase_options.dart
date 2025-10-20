@@ -41,8 +41,8 @@ class DefaultFirebaseOptions {
   }
 
   static const FirebaseOptions web = FirebaseOptions(
-    apiKey: 'AIzaSyA0fRwLd4mLbwfP28uVvPt0QCVIWM2oAQs',
-    appId: '1:1096423812863:web:f329c046670ddf02a326ca',
+    apiKey: 'x',
+    appId: '1:1',
     messagingSenderId: '1096423812863',
     projectId: 'coffee-2eb12',
     authDomain: 'coffee-2eb12.firebaseapp.com',
