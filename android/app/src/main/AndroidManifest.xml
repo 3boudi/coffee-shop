@@ -15,10 +15,12 @@
     <!-- English: Allow network access from the Android app so Appwrite HTTP/S requests can work. -->
     <!-- Arabic: السماح بالوصول إلى الشبكة من التطبيق حتى تعمل طلبات HTTP/S الخاصة بـ Appwrite. -->
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Required on Android 13+ to post runtime notifications -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <application
         android:label="coffee_cart"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher">
+        android:icon="@mipmap/launcher_icon">
         <activity
             android:name=".MainActivity"
             android:exported="true"

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import '../../enums.dart';
 
-typedef AuthCallback = Future<void> Function(String email, String password);
+typedef AuthCallback =
+    Future<void> Function(String email, String password, Role role);
 typedef RegisterCallback =
     Future<void> Function(String email, String password, String name);
 
@@ -34,6 +36,7 @@ class _LoginPageState extends State<LoginPage>
   bool _isRegister = false;
   bool _loading = false;
   bool _obscurePassword = true;
+  Role _selectedRole = Role.user;
 
   @override
   void initState() {
@@ -71,7 +74,11 @@ class _LoginPageState extends State<LoginPage>
     setState(() => _loading = true);
 
     try {
-      await widget.onLogin(_email.text.trim(), _password.text.trim());
+      await widget.onLogin(
+        _email.text.trim(),
+        _password.text.trim(),
+        _selectedRole,
+      );
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -100,6 +107,15 @@ class _LoginPageState extends State<LoginPage>
 
     _animationController.reset();
     _animationController.forward();
+  }
+
+  void _toggleRole() {
+    setState(() {
+      _selectedRole = _selectedRole == Role.user ? Role.owner : Role.user;
+      if (_selectedRole == Role.owner) {
+        _isRegister = false; // Owners can't register
+      }
+    });
   }
 
   @override
@@ -211,6 +227,84 @@ class _LoginPageState extends State<LoginPage>
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
+                // Role Selection
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      'Login as:',
+                      style: TextStyle(
+                        color: Colors.white.withOpacity(0.7),
+                        fontSize: 16,
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                          color: Colors.white.withOpacity(0.2),
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          GestureDetector(
+                            onTap: _toggleRole,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 8,
+                              ),
+                              decoration: BoxDecoration(
+                                color: _selectedRole == Role.user
+                                    ? Colors.brown.shade700
+                                    : Colors.transparent,
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: Text(
+                                'User',
+                                style: TextStyle(
+                                  color: _selectedRole == Role.user
+                                      ? Colors.white
+                                      : Colors.white.withOpacity(0.7),
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ),
+                          GestureDetector(
+                            onTap: _toggleRole,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 8,
+                              ),
+                              decoration: BoxDecoration(
+                                color: _selectedRole == Role.owner
+                                    ? Colors.brown.shade700
+                                    : Colors.transparent,
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: Text(
+                                'Owner',
+                                style: TextStyle(
+                                  color: _selectedRole == Role.owner
+                                      ? Colors.white
+                                      : Colors.white.withOpacity(0.7),
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 24),
+
                 // Title
                 Text(
                   _isRegister ? 'Create Account' : 'Welcome Back',
@@ -377,32 +471,35 @@ class _LoginPageState extends State<LoginPage>
 
                 const SizedBox(height: 16),
 
-                // Toggle button
-                TextButton(
-                  onPressed: _toggleMode,
-                  child: RichText(
-                    text: TextSpan(
-                      style: TextStyle(
-                        color: Colors.white.withOpacity(0.7),
-                        fontSize: 14,
-                      ),
-                      children: [
-                        TextSpan(
-                          text: _isRegister
-                              ? 'Already have an account? '
-                              : 'Don\'t have an account? ',
+                // Toggle button (only show for User role)
+                if (_selectedRole == Role.user) ...[
+                  const SizedBox(height: 16),
+                  TextButton(
+                    onPressed: _toggleMode,
+                    child: RichText(
+                      text: TextSpan(
+                        style: TextStyle(
+                          color: Colors.white.withOpacity(0.7),
+                          fontSize: 14,
                         ),
-                        TextSpan(
-                          text: _isRegister ? 'Sign In' : 'Create Account',
-                          style: TextStyle(
-                            color: Colors.brown.shade300,
-                            fontWeight: FontWeight.w600,
+                        children: [
+                          TextSpan(
+                            text: _isRegister
+                                ? 'Already have an account? '
+                                : 'Don\'t have an account? ',
                           ),
-                        ),
-                      ],
+                          TextSpan(
+                            text: _isRegister ? 'Sign In' : 'Create Account',
+                            style: TextStyle(
+                              color: Colors.brown.shade300,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
-                ),
+                ],
               ],
             ),
           ),
@@ -461,7 +558,7 @@ class _LoginPageState extends State<LoginPage>
     return FadeTransition(
       opacity: _fadeAnimation,
       child: Text(
-        '© 2024 Coffee Cart',
+        '© 2026 Coffee Cart',
         style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 12),
       ),
     );

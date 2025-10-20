@@ -9,6 +9,11 @@ class HomePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final userLabels = user.labels;
+    final isOwner = userLabels.contains('owner');
+    final isUser = userLabels.isEmpty || userLabels.contains('user');
+    final roleText = isOwner ? 'Owner' : (isUser ? 'User' : 'Unknown');
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Home'),
@@ -29,6 +34,11 @@ class HomePage extends StatelessWidget {
             Text('Welcome, ${user.name}', style: const TextStyle(fontSize: 20)),
             const SizedBox(height: 8),
             Text('Email: ${user.email}'),
+            const SizedBox(height: 8),
+            Text(
+              'Role: $roleText',
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+            ),
           ],
         ),
       ),
