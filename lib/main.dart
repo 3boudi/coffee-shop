@@ -25,7 +25,7 @@ void main() async {
   FirebaseMessaging.onBackgroundMessage(_backgroundHandler);
 
   const String kAppwriteEndpoint = 'https://fra.cloud.appwrite.io/v1';
-  const String kAppwriteProjectId = '68bf228300007baa47f9';
+  const String kAppwriteProjectId = '...';
 
   final client = Client()
       .setEndpoint(kAppwriteEndpoint)
