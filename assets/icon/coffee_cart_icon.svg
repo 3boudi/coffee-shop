@@ -1,0 +1,43 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background circle -->
+  <circle cx="512" cy="512" r="512" fill="#8B4513"/>
+  
+  <!-- Cart body -->
+  <rect x="200" y="400" width="400" height="200" rx="20" fill="#D2691E"/>
+  <rect x="220" y="420" width="360" height="160" rx="10" fill="#F4A460"/>
+  
+  <!-- Cart wheels -->
+  <circle cx="280" cy="650" r="40" fill="#654321"/>
+  <circle cx="280" cy="650" r="25" fill="#8B4513"/>
+  <circle cx="520" cy="650" r="40" fill="#654321"/>
+  <circle cx="520" cy="650" r="25" fill="#8B4513"/>
+  
+  <!-- Cart handle -->
+  <rect x="180" y="450" width="20" height="100" fill="#654321"/>
+  <rect x="160" y="440" width="60" height="20" rx="10" fill="#654321"/>
+  
+  <!-- Coffee cup on cart -->
+  <ellipse cx="400" cy="480" rx="60" ry="40" fill="#FFFFFF"/>
+  <ellipse cx="400" cy="470" rx="50" ry="30" fill="#8B4513"/>
+  <ellipse cx="400" cy="460" rx="45" ry="25" fill="#D2691E"/>
+  
+  <!-- Steam from coffee -->
+  <path d="M 370 420 Q 375 400 370 380 Q 375 360 370 340" stroke="#FFFFFF" stroke-width="4" fill="none" opacity="0.7"/>
+  <path d="M 390 420 Q 395 400 390 380 Q 395 360 390 340" stroke="#FFFFFF" stroke-width="4" fill="none" opacity="0.7"/>
+  <path d="M 410 420 Q 415 400 410 380 Q 415 360 410 340" stroke="#FFFFFF" stroke-width="4" fill="none" opacity="0.7"/>
+  <path d="M 430 420 Q 425 400 430 380 Q 425 360 430 340" stroke="#FFFFFF" stroke-width="4" fill="none" opacity="0.7"/>
+  
+  <!-- Coffee beans decoration -->
+  <ellipse cx="300" cy="350" rx="15" ry="20" fill="#654321" transform="rotate(30 300 350)"/>
+  <ellipse cx="300" cy="350" rx="3" ry="15" fill="#8B4513" transform="rotate(30 300 350)"/>
+  
+  <ellipse cx="550" cy="320" rx="15" ry="20" fill="#654321" transform="rotate(-20 550 320)"/>
+  <ellipse cx="550" cy="320" rx="3" ry="15" fill="#8B4513" transform="rotate(-20 550 320)"/>
+  
+  <ellipse cx="650" cy="450" rx="15" ry="20" fill="#654321" transform="rotate(45 650 450)"/>
+  <ellipse cx="650" cy="450" rx="3" ry="15" fill="#8B4513" transform="rotate(45 650 450)"/>
+  
+  <!-- Cart umbrella/canopy -->
+  <path d="M 150 300 Q 400 250 650 300 L 620 320 Q 400 280 180 320 Z" fill="#FF6B6B"/>
+  <rect x="390" y="300" width="20" height="100" fill="#654321"/>
+</svg>

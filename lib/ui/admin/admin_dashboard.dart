@@ -1,0 +1,509 @@
+import 'package:flutter/material.dart';
+import 'package:appwrite/appwrite.dart';
+import 'package:appwrite/models.dart' as models;
+import '../../models/product.dart';
+import '../../models/order.dart';
+import '../../services/appwrite_service.dart';
+
+class AdminDashboard extends StatefulWidget {
+  final models.User user;
+  final VoidCallback onLogout;
+  final Client client;
+
+  const AdminDashboard({
+    super.key,
+    required this.user,
+    required this.onLogout,
+    required this.client,
+  });
+
+  @override
+  State<AdminDashboard> createState() => _AdminDashboardState();
+}
+
+class _AdminDashboardState extends State<AdminDashboard>
+    with TickerProviderStateMixin {
+  late TabController _tabController;
+  late AppwriteService _appwriteService;
+
+  List<Product> _products = [];
+  List<Order> _orders = [];
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 3, vsync: this);
+    _appwriteService = AppwriteService(widget.client);
+    _loadData();
+    _setupRealtimeSubscriptions();
+  }
+
+  void _setupRealtimeSubscriptions() {
+    // Subscribe to product updates
+    _appwriteService.subscribeToProducts((product) {
+      setState(() {
+        final index = _products.indexWhere((p) => p.id == product.id);
+        if (index != -1) {
+          _products[index] = product;
+        } else {
+          _products.add(product);
+        }
+      });
+    });
+
+    // Subscribe to order updates
+    _appwriteService.subscribeToOrders((order) {
+      setState(() {
+        final index = _orders.indexWhere((o) => o.id == order.id);
+        if (index != -1) {
+          _orders[index] = order;
+        } else {
+          _orders.add(order);
+        }
+      });
+    });
+  }
+
+  Future<void> _loadData() async {
+    setState(() => _isLoading = true);
+    try {
+      final products = await _appwriteService.getProducts();
+      final orders = await _appwriteService.getOrders();
+      setState(() {
+        _products = products;
+        _orders = orders;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() => _isLoading = false);
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error loading data: $e')));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Admin Dashboard'),
+        backgroundColor: Colors.blue,
+        foregroundColor: Colors.white,
+        actions: [
+          IconButton(
+            onPressed: widget.onLogout,
+            icon: const Icon(Icons.logout),
+            tooltip: 'Logout',
+          ),
+        ],
+        bottom: TabBar(
+          controller: _tabController,
+          indicatorColor: Colors.brown,
+          labelColor: Colors.white,
+          unselectedLabelColor: Colors.white70,
+          tabs: const [
+            Tab(text: 'Home', icon: Icon(Icons.home)),
+            Tab(text: 'Orders', icon: Icon(Icons.shopping_cart)),
+            Tab(text: 'Profile', icon: Icon(Icons.person)),
+          ],
+        ),
+      ),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : TabBarView(
+              controller: _tabController,
+              children: [
+                _buildHomeTab(),
+                _buildOrdersTab(),
+                _buildProfileTab(),
+              ],
+            ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: _showAddProductDialog,
+        backgroundColor: Colors.brown,
+        child: const Icon(Icons.add, color: Colors.white),
+      ),
+    );
+  }
+
+  Widget _buildHomeTab() {
+    return ListView.builder(
+      itemCount: _products.length,
+      itemBuilder: (context, index) {
+        final product = _products[index];
+        return AnimatedOpacity(
+          opacity: 1.0,
+          duration: const Duration(milliseconds: 500),
+          child: Card(
+            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            color: Colors.brown.shade50,
+            elevation: 4,
+            child: ListTile(
+              title: Text(
+                product.name,
+                style: const TextStyle(color: Colors.brown),
+              ),
+              subtitle: Text(
+                '${product.description}\n\$${product.price.toStringAsFixed(2)}',
+                style: TextStyle(color: Colors.brown.shade700),
+              ),
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.edit, color: Colors.blue),
+                    onPressed: () => _showEditProductDialog(product),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.delete, color: Colors.red),
+                    onPressed: () => _deleteProduct(product.id),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildProfileTab() {
+    return Center(
+      child: AnimatedOpacity(
+        opacity: 1.0,
+        duration: const Duration(milliseconds: 500),
+        child: Container(
+          padding: const EdgeInsets.all(24),
+          margin: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.blue.shade50,
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.brown.withOpacity(0.2),
+                blurRadius: 8,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.person, size: 96, color: Colors.brown),
+              const SizedBox(height: 16),
+              Text(
+                'Owner Profile',
+                style: Theme.of(
+                  context,
+                ).textTheme.headlineMedium?.copyWith(color: Colors.blue),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Name: ${widget.user.name}',
+                style: const TextStyle(color: Colors.brown),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Email: ${widget.user.email}',
+                style: const TextStyle(color: Colors.brown),
+              ),
+              const SizedBox(height: 8),
+              const Text('Role: Owner', style: TextStyle(color: Colors.brown)),
+              const SizedBox(height: 16),
+              Text(
+                'Joined: ${widget.user.registration.isNotEmpty ? DateTime.parse(widget.user.registration).year : 'N/A'}',
+                style: Theme.of(
+                  context,
+                ).textTheme.bodyMedium?.copyWith(color: Colors.brown),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildOrdersTab() {
+    return ListView.builder(
+      itemCount: _orders.length,
+      itemBuilder: (context, index) {
+        final order = _orders[index];
+        return AnimatedOpacity(
+          opacity: 1.0,
+          duration: const Duration(milliseconds: 500),
+          child: Card(
+            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            color: Colors.blue.shade50,
+            elevation: 4,
+            child: ExpansionTile(
+              title: Text(
+                'Order by ${order.userId}',
+                style: const TextStyle(color: Colors.blue),
+              ),
+              subtitle: Text(
+                'Status: ${order.status.name}',
+                style: TextStyle(color: Colors.blue.shade700),
+              ),
+              children: [
+                Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Items:',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: Colors.brown,
+                        ),
+                      ),
+                      ...order.products.map((item) {
+                        final product = _products.firstWhere(
+                          (p) => p.id == item.productId,
+                          orElse: () => Product(
+                            id: '',
+                            name: 'Unknown Product',
+                            description: '',
+                            price: 0,
+                            createdBy: '',
+                            createdAt: DateTime.now(),
+                            updatedAt: DateTime.now(),
+                          ),
+                        );
+                        return Text(
+                          '- ${product.name}: ${item.quantity}x',
+                          style: TextStyle(color: Colors.brown.shade700),
+                        );
+                      }),
+                      const SizedBox(height: 16),
+                      Text(
+                        'Total: \$${order.totalPrice.toStringAsFixed(2)}',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: Colors.brown,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      if (order.status == OrderStatus.pending)
+                        ElevatedButton(
+                          onPressed: () => _confirmOrder(order.id),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.brown,
+                            foregroundColor: Colors.white,
+                          ),
+                          child: const Text('Confirm Order'),
+                        ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _showAddProductDialog() {
+    final nameController = TextEditingController();
+    final descriptionController = TextEditingController();
+    final priceController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Add Product'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: nameController,
+              decoration: const InputDecoration(labelText: 'Name'),
+            ),
+            TextField(
+              controller: descriptionController,
+              decoration: const InputDecoration(labelText: 'Description'),
+            ),
+            TextField(
+              controller: priceController,
+              decoration: const InputDecoration(labelText: 'Price'),
+              keyboardType: TextInputType.number,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              final name = nameController.text.trim();
+              final description = descriptionController.text.trim();
+              final price = double.tryParse(priceController.text);
+
+              if (name.isEmpty || description.isEmpty || price == null) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Please fill all fields correctly'),
+                  ),
+                );
+                return;
+              }
+
+              try {
+                final product = Product(
+                  id: '',
+                  name: name,
+                  description: description,
+                  price: price,
+                  createdBy: widget.user.$id,
+                  createdAt: DateTime.now(),
+                  updatedAt: DateTime.now(),
+                );
+
+                await _appwriteService.createProduct(product);
+                Navigator.of(context).pop();
+                _loadData();
+              } catch (e) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Error adding product: $e')),
+                );
+              }
+            },
+            child: const Text('Add'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showEditProductDialog(Product product) {
+    final nameController = TextEditingController(text: product.name);
+    final descriptionController = TextEditingController(
+      text: product.description,
+    );
+    final priceController = TextEditingController(
+      text: product.price.toString(),
+    );
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Edit Product'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: nameController,
+              decoration: const InputDecoration(labelText: 'Name'),
+            ),
+            TextField(
+              controller: descriptionController,
+              decoration: const InputDecoration(labelText: 'Description'),
+            ),
+            TextField(
+              controller: priceController,
+              decoration: const InputDecoration(labelText: 'Price'),
+              keyboardType: TextInputType.number,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              final name = nameController.text.trim();
+              final description = descriptionController.text.trim();
+              final price = double.tryParse(priceController.text);
+
+              if (name.isEmpty || description.isEmpty || price == null) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Please fill all fields correctly'),
+                  ),
+                );
+                return;
+              }
+
+              try {
+                final updatedProduct = product.copyWith(
+                  name: name,
+                  description: description,
+                  price: price,
+                  updatedAt: DateTime.now(),
+                );
+
+                await _appwriteService.updateProduct(
+                  product.id,
+                  updatedProduct,
+                );
+                Navigator.of(context).pop();
+                _loadData();
+              } catch (e) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Error updating product: $e')),
+                );
+              }
+            },
+            child: const Text('Update'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _deleteProduct(String productId) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Product'),
+        content: const Text('Are you sure you want to delete this product?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      try {
+        await _appwriteService.deleteProduct(productId);
+        _loadData();
+      } catch (e) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error deleting product: $e')));
+      }
+    }
+  }
+
+  Future<void> _confirmOrder(String orderId) async {
+    try {
+      final order = _orders.firstWhere((o) => o.id == orderId);
+      final updatedOrder = order.copyWith(status: OrderStatus.confirmed);
+      await _appwriteService.updateOrder(orderId, updatedOrder);
+      _loadData();
+    } catch (e) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error confirming order: $e')));
+    }
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
+}
